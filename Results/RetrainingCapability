@@ -1,0 +1,14 @@
+counts = pd.DataFrame(data['retraining_capability'].value_counts())
+print(counts)
+print('Неизвестно\t\t\t\t\t\t\t\t'+ str(data['retraining_capability'].isnull().sum()))
+print('\t\t\t\t\t\t\t\t\t\t------')
+print('Всего\t\t\t\t\t\t\t\t\t'+ str(data.__len__()))
+
+
+
+                         retraining_capability
+Готов к переобучению                    624486
+Не готов к переобучению                  27951
+Неизвестно								111141
+										------
+Всего									763578

@@ -1,0 +1,138 @@
+правка таблиц:
+ALTER TABLE `educations` CHANGE `graduate_year` `graduate_year` INT NULL DEFAULT NULL;
+ALTER TABLE educations ADD born int null;
+ALTER TABLE work_experiences ADD born int null;
+
+
+Высшее образование: 
+Университет\Академия\Институт
+============================================
+
+(поступление в 18)
+Лечебное дело +6 лет -> 24 года
+Специалитет +5лет  -> 23 года
+Магистр +6лет 
+Всё остальное +4года -> 22 года
+
+
+СПО:
+
+Колледж\Техникум\Училище
+выпуск 19-20 лет
+
+
+Школа:
+выпуск 16-18 лет
+
+
+
+select id_cv, graduate_year, qualification,legal_name 
+from educations
+where legal_name REGEXP 'Унив*|Акад*|Инст*|унив*|акад*|инст*'
+and qualification REGEXP 'Лечебн*|лечебн*|Магистр*|магистр*'
+
+
+update educations
+set born = graduate_year - 24
+where legal_name REGEXP 'Унив*|Акад*|Инст*|унив*|акад*|инст*'
+and qualification REGEXP 'Лечебн*|лечебн*|Магистр*|магистр*'
+
+update educations
+set born = graduate_year - 23
+where legal_name REGEXP 'Унив*|Акад*|Инст*|унив*|акад*|инст*'
+and qualification REGEXP 'Специал*|специал*'
+
+update educations
+set born = graduate_year - 22
+where legal_name REGEXP 'Унив*|Акад*|Инст*|унив*|акад*|инст*'
+and born = 0
+
+update educations
+set born = graduate_year - 20
+where legal_name REGEXP 'Колледж*|колледж*|Техник*|техник*|Училищ*|училищ*'
+
+update educations
+set born = graduate_year - 16
+where legal_name REGEXP 'Школ*|школ*'
+And born = 0
+
+update educations
+set born = graduate_year - 20
+where born = 0
+
+
+
+
+Работа:
+=============================================
+с 16-18 лет
+
+Если указана одна магистратура:
+
+select id_cv, start_work-18 born
+from (select id_cv, min(year(date_from)) start_work, year-2 start_mag
+from work_experiences,
+(select educations.id_cv id, graduate_year year from educations, (SELECT id_cv, min(graduate_year) year FROM `educations`group by id_cv) min_graduate where educations.id_cv = min_graduate.id_cv and educations.graduate_year = min_graduate.year and qualification REGEXP 'Магистр*|магистр*') t
+where id_cv = t.id
+group by id_cv
+) years
+where start_work+4<start_mag and start_work!=0
+
+update work_experiences t1,
+(select id_cv, start_work-18 born
+from (select id_cv, min(year(date_from)) start_work, year-2 start_mag
+from work_experiences,
+(select educations.id_cv id, graduate_year year from educations, (SELECT id_cv, min(graduate_year) year FROM `educations`group by id_cv) min_graduate where educations.id_cv = min_graduate.id_cv and educations.graduate_year = min_graduate.year and qualification REGEXP 'Магистр*|магистр*') t
+where id_cv = t.id
+group by id_cv
+) years
+where start_work+4<start_mag and start_work!=0) t2
+
+set t1.born = t2.born
+where t1.id_cv = t2.id_cv
+
+
+
+Если ничего не указано:
+
+update work_experiences
+set born = year(date_from)-18
+where id_cv not in
+(SELECT id_cv FROM `educations`)
+
+
+Создание и заполнение таблицы с возрастами:
+-------------------------------------------
+
+create table old (id_cv int, born int)
+
+
+всё из work_experiences:
+--
+insert into old(id_cv, born)
+SELECT id_cv, min(born) FROM `work_experiences` where born !=0 group by id_cv
+
+
+всё из educations:
+--
+insert into old(id_cv, born)
+SELECT id_cv, min(born) FROM `educations` 
+where born !=0 
+and id_cv not in (select id_cv from old)
+group by id_cv
+
+
+первая работа в 18 лет:
+--
+insert into old(id_cv, born)
+SELECT id_cv, min(year(date_from))-18 FROM `work_experiences` where id_cv not in (select id_cv from old)
+group by id_cv
+
+очистка от пустых строк:
+--
+delete from old where born<1940
+
+
+
+
+
